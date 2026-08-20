@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Tra Cứu & Phân Tích Điểm Thi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js để vẽ biểu đồ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse: Thư viện đọc CSV chuẩn xác không bao giờ mất dòng -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 font-sans text-slate-800">
+
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 sm:p-8 border border-slate-200 my-8">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-slate-800">Cổng Tra Cứu Kết Quả</h1>
+            <p class="text-slate-500 text-sm mt-1">Nhập thông tin thí sinh để xem điểm, xếp hạng & phổ điểm</p>
+        </div>
+
+        <!-- Form tra cứu -->
+        <form id="searchForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Họ và tên <span class="text-red-500">*</span></label>
+                <input type="text" id="fullName" required placeholder="Ví dụ: Nguyễn Đức Mạnh" 
+                    class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Lớp <span class="text-red-500">*</span></label>
+                    <input type="text" id="className" required placeholder="Ví dụ: 9A" 
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ngày thi <span class="text-red-500">*</span></label>
+                    <input type="text" id="examDate" required placeholder="Ví dụ: 15/08/2026 hoặc 15/8" 
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
+                </div>
+            </div>
+
+            <button type="submit" id="btnSubmit"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition duration-200 shadow-md cursor-pointer mt-2">
+                Tra Cứu Kết Quả
+            </button>
+        </form>
+
+        <!-- Khung kết quả -->
+        <div id="resultBox" class="mt-6 pt-5 border-t border-slate-200 hidden space-y-5">
+            <!-- Thông tin thí sinh -->
+            <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100 text-sm space-y-1">
+                <p><span class="font-medium text-slate-600">Họ và tên:</span> <span id="resName" class="font-bold text-slate-900"></span></p>
+                <p><span class="font-medium text-slate-600">Lớp:</span> <span id="resClass" class="text-slate-900"></span></p>
+                <p><span class="font-medium text-slate-600">Ngày thi:</span> <span id="resDate" class="text-slate-900"></span></p>
+            </div>
+
+            <!-- Ô xếp hạng & Điểm -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-center">
+                    <span class="block text-xs text-amber-700 font-medium uppercase">Xếp hạng trong đợt thi</span>
+                    <span id="resSTT" class="text-2xl font-black text-amber-600">--</span>
+                </div>
+                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-center">
+                    <span class="block text-xs text-emerald-700 font-medium uppercase">Tổng Điểm</span>
+                    <span id="resScore" class="text-2xl font-black text-emerald-600">--</span>
+                </div>
+            </div>
+
+            <!-- Phân tích Top % & Vượt qua -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-blue-50 p-3.5 rounded-xl border border-blue-200 text-center">
+                    <span class="block text-xs text-blue-700 font-semibold uppercase">Vị trí</span>
+                    <span id="resTopPercent" class="text-xl font-bold text-blue-800 mt-0.5 block">--</span>
+                </div>
+                <div class="bg-purple-50 p-3.5 rounded-xl border border-purple-200 text-center">
+                    <span class="block text-xs text-purple-700 font-semibold uppercase">Vượt qua</span>
+                    <span id="resBeatPercent" class="text-xl font-bold text-purple-800 mt-0.5 block">--</span>
+                </div>
+            </div>
+
+            <!-- Biểu đồ phổ điểm 0.5 -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h3 class="text-xs font-bold uppercase text-slate-700 mb-1 text-center">Biểu Đồ Phổ Điểm Đợt Thi (Bước 0.5)</h3>
+                <p class="text-[11px] text-center text-slate-500 mb-3">(Cột màu cam biểu thị khoảng điểm của bạn)</p>
+                <div class="relative h-60 w-full overflow-x-auto">
+                    <canvas id="scoreChart"></canvas>
+                </div>
+            </div>
+
+            <button type="button" onclick="resetForm()" class="w-full text-center text-xs text-slate-500 hover:text-slate-800 underline block pt-2 cursor-pointer">
+                ← Tra cứu thí sinh khác
+            </button>
+        </div>
+
+        <p id="errorMsg" class="mt-4 text-center text-sm text-red-500 hidden font-medium"></p>
+    </div>
+
+    <script>
+        const SHEET_ID = '18mOtKAkRK71_fI96YwhlQhslJLHii-bAbwWA8BbmNNk';
+        const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+
+        let chartInstance = null;
+
+        // Chuẩn hóa chuỗi (bỏ khoảng trắng thừa, chữ thường)
+        function cleanStr(s) {
+            return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+        }
+
+        // Chuẩn hóa ngày thi thông minh (15/8/2026 hay 15/08/2026 hay 15-8-2026 đều nhận đúng)
+        function cleanDate(str) {
+            if (!str) return '';
+            let s = str.toString().trim().replace(/[-.]/g, '/');
+            let parts = s.split('/');
+            if (parts.length >= 2) {
+                let day = parseInt(parts[0], 10);
+                let month = parseInt(parts[1], 10);
+                let year = parts[2] ? parts[2].trim() : '';
+                return `${day}/${month}/${year}`.replace(/\/+$/, '');
+            }
+            return s.toLowerCase();
+        }
+
+        function renderChart(scores, studentScore) {
+            const labels = [];
+            const counts = new Array(20).fill(0);
+
+            for (let i = 0; i < 20; i++) {
+                const start = (i * 0.5).toFixed(1);
+                const end = ((i + 1) * 0.5).toFixed(1);
+                labels.push(`${start}-${end}`);
+            }
+
+            scores.forEach(score => {
+                let bin = Math.floor(score / 0.5);
+                if (bin >= 20) bin = 19;
+                if (bin < 0) bin = 0;
+                counts[bin]++;
+            });
+
+            let studentBin = Math.floor(studentScore / 0.5);
+            if (studentBin >= 20) studentBin = 19;
+            if (studentBin < 0) studentBin = 0;
+
+            const bgColors = counts.map((_, idx) => idx === studentBin ? 'rgba(249, 115, 22, 0.9)' : 'rgba(99, 102, 241, 0.5)');
+            const borderColors = counts.map((_, idx) => idx === studentBin ? '#ea580c' : '#6366f1');
+
+            const ctx = document.getElementById('scoreChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Số lượng thí sinh',
+                        data: counts,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: 1.5,
+                        borderRadius: 4,
+                        barPercentage: 0.85
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return `Khoảng điểm: [${context[0].label}]`;
+                                },
+                                label: function(context) {
+                                    let str = `Số lượng: ${context.parsed.y} bạn`;
+                                    if (context.dataIndex === studentBin) {
+                                        str += ' (Điểm của bạn ở đây)';
+                                    }
+                                    return str;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, font: { size: 10 } },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            ticks: { font: { size: 9 }, maxRotation: 45, minRotation: 45 },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnSubmit');
+            const resultBox = document.getElementById('resultBox');
+            const errorMsg = document.getElementById('errorMsg');
+            const searchForm = document.getElementById('searchForm');
+
+            const nameInput = cleanStr(document.getElementById('fullName').value);
+            const classInput = cleanStr(document.getElementById('className').value);
+            const dateInput = cleanDate(document.getElementById('examDate').value);
+
+            btn.textContent = 'Đang đọc toàn bộ danh sách...';
+            btn.disabled = true;
+            resultBox.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+
+            // Tải và phân tích toàn bộ CSV bằng PapaParse
+            Papa.parse(CSV_URL, {
+                download: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    try {
+                        const rows = results.data;
+                        if (!rows || rows.length <= 1) {
+                            throw new Error('Bảng tính trống');
+                        }
+
+                        // Lấy dữ liệu từ hàng 2 trở đi (bỏ dòng tiêu đề)
+                        let allStudents = [];
+                        for (let i = 1; i < rows.length; i++) {
+                            const r = rows[i];
+                            if (r.length >= 4 && r[0].toString().trim() !== '') {
+                                const rawScore = r[3].toString().replace(',', '.').trim();
+                                allStudents.push({
+                                    name: r[0].toString().trim(),
+                                    className: r[1].toString().trim(),
+                                    examDate: r[2].toString().trim(),
+                                    score: parseFloat(rawScore) || 0
+                                });
+                            }
+                        }
+
+                        // 1. Lọc theo Lớp
+                        let classStudents = allStudents.filter(item => cleanStr(item.className) === classInput);
+                        if (classStudents.length === 0) {
+                            // Nếu lớp không khớp, lấy toàn bộ để không bị chặn nhầm
+                            classStudents = allStudents;
+                        }
+
+                        // 2. Lọc theo Ngày thi
+                        let batchStudents = classStudents.filter(item => cleanDate(item.examDate) === dateInput);
+                        if (batchStudents.length === 0) {
+                            // Nếu ngày thi không khớp chính xác, dùng danh sách theo lớp để tránh mất dữ liệu
+                            batchStudents = classStudents;
+                        }
+
+                        // Sắp xếp điểm từ CAO xuống THẤP
+                        batchStudents.sort((a, b) => b.score - a.score);
+
+                        const totalStudents = batchStudents.length;
+                        const rankIndex = batchStudents.findIndex(item => cleanStr(item.name) === nameInput);
+
+                        if (rankIndex !== -1) {
+                            const student = batchStudents[rankIndex];
+                            const rank = rankIndex + 1;
+
+                            const topPercent = ((rank / totalStudents) * 100).toFixed(1);
+                            const beatPercent = (((totalStudents - rank) / totalStudents) * 100).toFixed(1);
+
+                            document.getElementById('resName').textContent = student.name;
+                            document.getElementById('resClass').textContent = student.className;
+                            document.getElementById('resDate').textContent = student.examDate;
+                            document.getElementById('resSTT').textContent = `#${rank}/${totalStudents}`;
+                            document.getElementById('resScore').textContent = student.score;
+
+                            document.getElementById('resTopPercent').textContent = `Top ${topPercent}%`;
+                            document.getElementById('resBeatPercent').textContent = `Hơn ${beatPercent}%`;
+
+                            resultBox.classList.remove('hidden');
+                            searchForm.classList.add('hidden');
+
+                            const allScores = batchStudents.map(s => s.score);
+                            renderChart(allScores, student.score);
+                        } else {
+                            errorMsg.textContent = `Không tìm thấy học sinh "${document.getElementById('fullName').value}" trong danh sách ${totalStudents} bạn!`;
+                            errorMsg.classList.remove('hidden');
+                        }
+                    } catch (err) {
+                        errorMsg.textContent = 'Lỗi xử lý bảng dữ liệu. Vui lòng kiểm tra lại Google Sheet!';
+                        errorMsg.classList.remove('hidden');
+                    } finally {
+                        btn.textContent = 'Tra Cứu Kết Quả';
+                        btn.disabled = false;
+                    }
+                },
+                error: function() {
+                    errorMsg.textContent = 'Không thể kết nối đến Google Sheets. Hãy kiểm tra quyền xem công khai!';
+                    errorMsg.classList.remove('hidden');
+                    btn.textContent = 'Tra Cứu Kết Quả';
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        function resetForm() {
+            document.getElementById('searchForm').classList.remove('hidden');
+            document.getElementById('resultBox').classList.add('hidden');
+            document.getElementById('fullName').value = '';
+        }
+    </script>
+</body>
+</html>
