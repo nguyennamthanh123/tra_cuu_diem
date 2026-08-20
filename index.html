@@ -14,31 +14,33 @@
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 sm:p-8 border border-slate-200 my-8">
         <div class="text-center mb-6">
             <h1 class="text-2xl font-bold text-slate-800">Cổng Tra Cứu Kết Quả</h1>
-            <p class="text-slate-500 text-sm mt-1">Xem điểm thi, xếp hạng & phân tích phổ điểm chi tiết</p>
+            <p class="text-slate-500 text-sm mt-1">Nhập thông tin thí sinh để xem điểm, thứ hạng & phổ điểm</p>
         </div>
 
         <!-- Form tra cứu -->
         <form id="searchForm" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Họ và tên <span class="text-red-500">*</span></label>
                 <input type="text" id="fullName" required placeholder="Ví dụ: Nguyễn Đức Mạnh" 
                     class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
             </div>
 
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Lớp</label>
-                <input type="text" id="className" required placeholder="Ví dụ: 9A" 
-                    class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
-            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Lớp <span class="text-red-500">*</span></label>
+                    <input type="text" id="className" required placeholder="Ví dụ: 9A" 
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
+                </div>
 
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Ngày thi</label>
-                <input type="text" id="examDate" placeholder="Ví dụ: 15/08/2026 (không bắt buộc)" 
-                    class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ngày thi <span class="text-red-500">*</span></label>
+                    <input type="text" id="examDate" required placeholder="Ví dụ: 15/08/2026" 
+                        class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm transition">
+                </div>
             </div>
 
             <button type="submit" id="btnSubmit"
-                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition duration-200 shadow-md cursor-pointer">
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition duration-200 shadow-md cursor-pointer mt-2">
                 Tra Cứu Kết Quả
             </button>
         </form>
@@ -55,7 +57,7 @@
             <!-- Ô xếp hạng & Điểm -->
             <div class="grid grid-cols-2 gap-3">
                 <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-center">
-                    <span class="block text-xs text-amber-700 font-medium uppercase">Xếp hạng (STT)</span>
+                    <span class="block text-xs text-amber-700 font-medium uppercase">Xếp hạng trong đợt thi</span>
                     <span id="resSTT" class="text-2xl font-black text-amber-600">--</span>
                 </div>
                 <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-center">
@@ -78,14 +80,14 @@
 
             <!-- Phổ điểm đồ thị cột chia 0.5 -->
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h3 class="text-xs font-bold uppercase text-slate-700 mb-1 text-center">Biểu Đồ Phổ Điểm Chi Tiết (Bước 0.5)</h3>
+                <h3 class="text-xs font-bold uppercase text-slate-700 mb-1 text-center">Biểu Đồ Phổ Điểm Đợt Thi (Bước 0.5)</h3>
                 <p class="text-[11px] text-center text-slate-500 mb-3">(Cột màu cam biểu thị khoảng điểm của bạn)</p>
                 <div class="relative h-60 w-full overflow-x-auto">
                     <canvas id="scoreChart"></canvas>
                 </div>
             </div>
 
-            <button type="button" onclick="resetForm()" class="w-full text-center text-xs text-slate-500 hover:text-slate-800 underline block pt-2">
+            <button type="button" onclick="resetForm()" class="w-full text-center text-xs text-slate-500 hover:text-slate-800 underline block pt-2 cursor-pointer">
                 ← Tra cứu thí sinh khác
             </button>
         </div>
@@ -99,6 +101,12 @@
         const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
 
         let chartInstance = null;
+
+        // Chuẩn hóa định dạng ngày để so sánh không bị lỗi khoảng trắng hoặc gạch nối
+        function normalizeDate(str) {
+            if (!str) return '';
+            return str.toString().trim().replace(/[-]/g, '/');
+        }
 
         function parseCSV(text) {
             const lines = text.trim().split('\n');
@@ -118,7 +126,6 @@
         }
 
         function renderChart(scores, studentScore) {
-            // Tạo 20 khoảng điểm theo bước 0.5: [0 - 0.5], [0.5 - 1], ..., [9.5 - 10]
             const labels = [];
             const counts = new Array(20).fill(0);
 
@@ -130,12 +137,11 @@
 
             scores.forEach(score => {
                 let bin = Math.floor(score / 0.5);
-                if (bin >= 20) bin = 19; // Điểm 10 rơi vào bin cuối [9.5 - 10.0]
+                if (bin >= 20) bin = 19;
                 if (bin < 0) bin = 0;
                 counts[bin]++;
             });
 
-            // Tìm bin của học sinh tra cứu
             let studentBin = Math.floor(studentScore / 0.5);
             if (studentBin >= 20) studentBin = 19;
             if (studentBin < 0) studentBin = 0;
@@ -208,8 +214,9 @@
 
             const nameInput = document.getElementById('fullName').value.trim().toLowerCase();
             const classInput = document.getElementById('className').value.trim().toLowerCase();
+            const dateInput = normalizeDate(document.getElementById('examDate').value);
 
-            btn.textContent = 'Đang phân tích dữ liệu...';
+            btn.textContent = 'Đang tra cứu & phân tích...';
             btn.disabled = true;
             resultBox.classList.add('hidden');
             errorMsg.classList.add('hidden');
@@ -221,29 +228,35 @@
                 const csvData = await response.text();
                 let allStudents = parseCSV(csvData);
 
-                // Lọc theo lớp
-                let classStudents = allStudents.filter(item => item.className.toLowerCase() === classInput);
-                if (classStudents.length === 0) {
-                    classStudents = allStudents;
+                // Lọc đồng thời theo LỚP VÀ NGÀY THI của đợt thi đó
+                let batchStudents = allStudents.filter(item => 
+                    item.className.toLowerCase() === classInput && 
+                    normalizeDate(item.examDate) === dateInput
+                );
+
+                if (batchStudents.length === 0) {
+                    errorMsg.textContent = 'Không tìm thấy dữ liệu thi của Lớp ' + document.getElementById('className').value + ' vào ngày ' + document.getElementById('examDate').value + '!';
+                    errorMsg.classList.remove('hidden');
+                    return;
                 }
 
-                // Sắp xếp điểm từ cao xuống thấp
-                classStudents.sort((a, b) => b.score - a.score);
+                // Sắp xếp điểm đợt thi từ cao xuống thấp
+                batchStudents.sort((a, b) => b.score - a.score);
 
-                const totalStudents = classStudents.length;
-                const rankIndex = classStudents.findIndex(item => item.name.toLowerCase() === nameInput);
+                const totalStudents = batchStudents.length;
+                const rankIndex = batchStudents.findIndex(item => item.name.toLowerCase() === nameInput);
 
                 if (rankIndex !== -1) {
-                    const student = classStudents[rankIndex];
+                    const student = batchStudents[rankIndex];
                     const rank = rankIndex + 1;
 
-                    // Tính Top % và % vượt qua
+                    // Tính Top % và % vượt qua các bạn cùng đợt thi
                     const topPercent = ((rank / totalStudents) * 100).toFixed(1);
                     const beatPercent = (((totalStudents - rank) / totalStudents) * 100).toFixed(1);
 
                     document.getElementById('resName').textContent = student.name;
                     document.getElementById('resClass').textContent = student.className;
-                    document.getElementById('resDate').textContent = student.examDate || '15/08/2026';
+                    document.getElementById('resDate').textContent = student.examDate;
                     document.getElementById('resSTT').textContent = `#${rank}/${totalStudents}`;
                     document.getElementById('resScore').textContent = student.score;
 
@@ -253,15 +266,15 @@
                     resultBox.classList.remove('hidden');
                     searchForm.classList.add('hidden');
 
-                    // Vẽ biểu đồ phổ điểm 0.5
-                    const allScores = classStudents.map(s => s.score);
+                    // Vẽ biểu đồ theo điểm của đợt thi đó
+                    const allScores = batchStudents.map(s => s.score);
                     renderChart(allScores, student.score);
                 } else {
-                    errorMsg.textContent = 'Không tìm thấy thông tin thí sinh khớp với thông tin đã nhập!';
+                    errorMsg.textContent = 'Không tìm thấy thí sinh "' + document.getElementById('fullName').value + '" trong danh sách thi ngày ' + document.getElementById('examDate').value + '!';
                     errorMsg.classList.remove('hidden');
                 }
             } catch (err) {
-                errorMsg.textContent = 'Lỗi kết nối tới dữ liệu!';
+                errorMsg.textContent = 'Lỗi kết nối tới cơ sở dữ liệu!';
                 errorMsg.classList.remove('hidden');
             } finally {
                 btn.textContent = 'Tra Cứu Kết Quả';
