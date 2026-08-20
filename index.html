@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra Cứu Kết Quả Thi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
+
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 sm:p-8 border border-slate-200">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-slate-800">Cổng Thông Tin Thi</h1>
+            <p class="text-slate-500 text-sm mt-1">Nhập thông tin để nhận số thứ tự và điểm</p>
+        </div>
+
+        <form id="examForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
+                <input type="text" id="fullName" required placeholder="Nguyễn Văn A" 
+                    class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Lớp</label>
+                <input type="text" id="className" required placeholder="VD: CNTT-01" 
+                    class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Ngày thi</label>
+                <input type="date" id="examDate" required 
+                    class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition duration-200 shadow-md hover:shadow-lg">
+                Xác nhận & Xem kết quả
+            </button>
+        </form>
+
+        <div id="resultBox" class="mt-6 pt-6 border-t border-slate-200 hidden space-y-4">
+            <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
+                <h2 class="text-center font-semibold text-indigo-900 mb-3">KẾT QUẢ XÁC NHẬN</h2>
+                <div class="space-y-2 text-sm text-slate-700">
+                    <p><span class="font-medium">Thí sinh:</span> <span id="resName" class="font-bold"></span></p>
+                    <p><span class="font-medium">Lớp:</span> <span id="resClass"></span></p>
+                    <p><span class="font-medium">Ngày thi:</span> <span id="resDate"></span></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-center">
+                    <span class="block text-xs text-amber-700 font-medium uppercase">Số thứ tự</span>
+                    <span id="resSTT" class="text-2xl font-black text-amber-600">--</span>
+                </div>
+                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-center">
+                    <span class="block text-xs text-emerald-700 font-medium uppercase">Điểm số</span>
+                    <span id="resScore" class="text-2xl font-black text-emerald-600">--</span>
+                </div>
+            </div>
+
+            <button onclick="resetForm()" class="w-full text-center text-sm text-slate-500 hover:text-slate-800 underline mt-2 block">
+                Nhập lại lượt khác
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Thiết lập ngày mặc định là hôm nay
+        document.getElementById('examDate').valueAsDate = new Date();
+
+        const form = document.getElementById('examForm');
+        const resultBox = document.getElementById('resultBox');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('fullName').value;
+            const className = document.getElementById('className').value;
+            const date = document.getElementById('examDate').value;
+
+            // Render thông tin
+            document.getElementById('resName').textContent = name;
+            document.getElementById('resClass').textContent = className;
+            document.getElementById('resDate').textContent = date;
+
+            // Logic tạo STT và Điểm số (Random mô phỏng hoặc lấy từ DB)
+            const randomSTT = Math.floor(Math.random() * 50) + 1; // STT từ 1 đến 50
+            const randomScore = (Math.random() * (10 - 5) + 5).toFixed(1); // Điểm từ 5.0 đến 10.0
+
+            document.getElementById('resSTT').textContent = `#${randomSTT < 10 ? '0' + randomSTT : randomSTT}`;
+            document.getElementById('resScore').textContent = randomScore;
+
+            // Hiển thị kết quả
+            resultBox.classList.remove('hidden');
+            form.classList.add('hidden');
+        });
+
+        function resetForm() {
+            form.reset();
+            document.getElementById('examDate').valueAsDate = new Date();
+            resultBox.classList.add('hidden');
+            form.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
